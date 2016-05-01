@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+BIN_DIR=./bin
+BUILD_DIR=./build
+RELEASE_CONF=Release
+
+set -e
+set -x
+
+# Make sure we are running out of root of the project
+if [ -f install ]; then
+  cd ..
+fi
+
+if ! git diff-index --quiet HEAD; then
+  echo "Changes must be committed before release"
+  exit 1
+fi
+
+rm -rf $BUILD_DIR
+xcodebuild -project Checkman.xcodeproj -target Checkman -configuration $RELEASE_CONF build
+
+(cd "$BUILD_DIR/$RELEASE_CONF"; zip -r "Checkman.zip" Checkman.app)
+cp "$BUILD_DIR/$RELEASE_CONF/Checkman.zip" $BIN_DIR
+
+rm -rf $BUILD_DIR
+git commit -am "release `git rev-parse --short HEAD`"

@@ -1,0 +1,55 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'open-uri'
+require 'nokogiri'
+require 'net/https'
+require 'json'
+require 'webrick'
+
+class CCTrayMultiProjectStatus
+  def initialize(projects)
+    @projects = projects
+  end
+
+  def as_json(*)
+    {
+      :result   => @projects.all? { |p| p.attr('lastBuildStatus') == "Success" },
+      :changing => @projects.any? { |p| p.attr('activity')        == "Building" },
+    }
+  end
+
+  def to_json(*)
+    JSON.dump(as_json)
+  end
+end
+
+class CCTray
+  def initialize(feed_url, pipeline, stage=nil, job=nil)
+    feed_uri = URI(WEBrick::HTTPUtils.escape(feed_url))
+    username = feed_uri.user
+    password = feed_uri.password
+
+    feed_uri.user     = nil
+    feed_uri.password = nil
+
+    username = WEBrick::HTTPUtils.unescape(username) if username
+    password = WEBrick::HTTPUtils.unescape(password) if password
+
+    @feed     = Nokogiri::XML(open(feed_uri, :http_basic_authentication => [username, password]))
+    @pipeline = pipeline
+    @stage    = stage
+    @job      = job
+  end
+
+  def latest_status
+    name = [@pipeline, @stage, @job].compact.join(" :: ")
+
+    projects = @feed.xpath('//Project').select do |proj|
+      proj.attr('name').downcase.include?(name.downcase)
+    end
+
+    CCTrayMultiProjectStatus.new(projects)
+  end
+end
+
+puts CCTray.new(*ARGV).latest_status.to_json if __FILE__ == $0

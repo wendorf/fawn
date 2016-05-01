@@ -1,0 +1,60 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "json"
+
+# Simple testing fixture
+#             ok: test.check
+#            url: test.check url
+#           info: test.check info
+#    ok-changing: test.check changing
+#           fail: test.check fail
+#  fail-changing: test.check fail changing
+#           slow: test.check slow
+#          error: test.check error
+#       flapping: test.check flapping
+
+class Test
+  def initialize(*tests)
+    @tests = tests
+  end
+
+  def has?(option, &block)
+    if @tests.include?(option.to_s)
+      block ? block.call : true
+    end
+  end
+
+  def ok?
+    if has?(:flapping)
+      case Time.now.sec / 6
+        when 0..3 then true
+        when 3..6 then false
+        else raise
+      end
+    else
+      !has?(:fail)
+    end
+  end
+
+  # Look like other checks...
+  def latest_status
+    self
+  end
+
+  def as_json(*)
+    has?(:slow) { sleep 10 }
+    has?(:error) { raise }
+    {
+      :result => ok?,
+      :changing => has?(:changing),
+      :url => has?(:url) { "http://www.google.com" },
+      :info => has?(:info) { [["Key", "value"]] }
+    }
+  end
+
+  def to_json(*)
+    JSON.dump(as_json)
+  end
+end
+
+puts Test.new(*ARGV).to_json if __FILE__ == $0
