@@ -1,0 +1,173 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "json"
+require "time"
+
+class SemaphoreBuildStatus
+  def initialize(hash)
+    @build_data = hash
+  end
+
+  def number
+    @build_data["build_number"]
+  end
+
+  def ok?
+    @build_data["result"] == "passed"
+  end
+
+  def building?
+    @build_data["result"] == "pending"
+  end
+
+  def build_url
+    @build_data["build_url"]
+  end
+
+  def started_at
+    iso8601 = @build_data["started_at"]
+    Time.parse(iso8601) if iso8601
+  end
+
+  def finished_at
+    iso8601 = @build_data["finished_at"]
+    Time.parse(iso8601) if iso8601
+  end
+
+  def duration
+    if started_at
+      secs = (finished_at || Time.now) - started_at
+      Time.at(secs).gmtime.strftime("%R:%S")
+    end
+  end
+
+  def formatted_started_at
+    started_at.getlocal.strftime("%I:%M%p %m/%d/%Y %Z") if started_at
+  end
+
+  def last_commit_short_sha
+    commit["id"][0..5] if commit
+  end
+
+  def last_commit_author
+    commit["author_name"] if commit
+  end
+
+  def last_commit_message
+    commit["message"] if commit
+  end
+
+  def as_json(options={})
+    {
+      :result => ok?,
+      :changing => building?,
+      :url => build_url,
+      :info => [
+        [:Build, number],
+        [:Duration, duration],
+        [:Started, formatted_started_at]
+      ] + optional_info(options)
+    }
+  end
+
+  def to_json(*)
+    JSON.dump(as_json)
+  end
+
+  private
+
+  def commit
+    # I'm guessing if push was a trigger
+    # then commit data is available
+    @build_data["commit"]
+  end
+
+  def optional_info(options={})
+    if commit
+      [ ["-", ""],
+        [:SHA, last_commit_short_sha],
+        [:Branch, options[:branch_name]],
+        [:Message, last_commit_message],
+        [:Author, last_commit_author] ]
+    else
+      []
+    end
+  end
+end
+
+class SemaphoreBranchStatus
+  def initialize(json)
+    @branch_data = JSON.parse(json)
+    @build_statuses =
+      @branch_data["builds"] \
+        .map { |d| SemaphoreBuildStatus.new(d) }
+
+    raise StandardError, "Status for branch '#{branch_name}' is not available" \
+      unless last_build_status
+
+  rescue JSON::ParserError
+    raise RuntimeError, "invalid json: '#{json}'"
+  end
+
+  def branch_name
+    @branch_data["branch_name"]
+  end
+
+  def ok?
+    if last_build_status.building? && last_non_pending_build_status
+      last_non_pending_build_status.ok?
+    else
+      last_build_status.ok?
+    end
+  end
+
+  def as_json(*)
+    last_build_status.as_json({
+      :branch_name => branch_name
+    }).tap do |hash|
+      hash[:result] = ok?
+    end
+  end
+
+  def to_json(*)
+    JSON.dump(as_json)
+  end
+
+  def last_build_status
+    @build_statuses[0]
+  end
+
+  def last_non_pending_build_status
+    @build_statuses.find { |d| !d.building? }
+  end
+end
+
+class Semaphore
+  def initialize(project_id, branch_id, auth_token)
+    raise ArgumentError "project_id must not be nil" \
+      unless @project_id = project_id
+
+    raise ArgumentError "branch_id must not be nil" \
+      unless @branch_id = branch_id
+
+    raise ArgumentError "auth_token must not be nil" \
+      unless @auth_token = auth_token
+  end
+
+  def latest_status
+    SemaphoreBranchStatus.new(http_get(builds_url))
+  end
+
+  private
+
+  def builds_url
+    "https://semaphoreapp.com/api/v1/projects/#{@project_id}/#{@branch_id}?auth_token=#{@auth_token}"
+  end
+
+  def http_get(url)
+    curl = "curl -s -A \"CheckmanSemaphore (Hostname: $HOSTNAME)\" '#{url}'"
+    `#{curl}`.tap { |o| $stderr.puts curl, o }
+  end
+end
+
+puts Semaphore.new(*ARGV).latest_status.to_json if __FILE__ == $0

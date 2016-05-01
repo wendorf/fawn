@@ -1,0 +1,70 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "json"
+require "pivotal-tracker"
+
+class TrackerStatus
+  def initialize(project_view)
+    @project_view = project_view
+  end
+
+  def ok?
+    @project_view.rejected_stories.empty?
+  end
+
+  def changing?
+    @project_view.started_stories.empty? && \
+      @project_view.rejected_stories.empty?
+  end
+
+  def as_json(*)
+    {
+      :result => ok?,
+      :changing => changing?,
+      :url => @project_view.url,
+      :info => nil
+    }
+  end
+
+  def to_json(*)
+    JSON.dump(as_json)
+  end
+end
+
+class TrackerProjectView
+  def initialize(project, user_name)
+    @project, @user_name = project, user_name
+  end
+
+  def started_stories;  stories_marked_as(:started);  end
+  def rejected_stories; stories_marked_as(:rejected); end
+
+  def url
+    "https://pivotaltracker.com/s/projects/#{@project.id}"
+  end
+
+  private
+
+  def owned_stories
+    @owned_stories ||= @project.stories.all(:owned_by => @user_name)
+  end
+
+  def stories_marked_as(state)
+    owned_stories.select { |s| s.current_state == state.to_s }
+  end
+end
+
+class Tracker
+  def initialize(project_id, user_token, *user_name)
+    @project_id, @user_name = project_id, user_name.join(" ")
+    PivotalTracker::Client.token = user_token
+  end
+
+  def latest_status
+    project = PivotalTracker::Project.find(@project_id)
+    project_view = TrackerProjectView.new(project, @user_name)
+    TrackerStatus.new(project_view)
+  end
+end
+
+puts Tracker.new(*ARGV).latest_status.to_json if __FILE__ == $0

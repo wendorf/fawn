@@ -1,0 +1,94 @@
+#!/usr/bin/env ruby
+require "rubygems"
+require "json"
+require "open-uri"
+require "net/https"
+
+class ConcourseBuild
+  def initialize(server_url, info)
+    @server_url = server_url
+    @info = info
+  end
+
+  def as_json
+    {
+      :result => success?,
+      :changing => changing?,
+      :url => url,
+      :info => [
+        ["Job", job_name],
+        ["Number", number],
+        ["Status", status],
+      ]
+    }
+  end
+
+  def to_json
+    JSON.dump(as_json)
+  end
+
+  private
+
+  def success?
+    status == "succeeded"
+  end
+
+  def changing?
+    !!@info["next_build"]
+  end
+
+  def url
+    if @info["next_build"]
+      path = @info["next_build"]["url"]
+    elsif @info["finished_build"]
+      path = @info["finished_build"]["url"]
+    else
+      path = @info["url"]
+    end
+
+    @server_url + path.to_s
+  end
+
+  def status
+    @info["finished_build"]["status"]
+  end
+
+  def job_name
+    @info["finished_build"]["job_name"]
+  end
+
+  def number
+    (@info["next_build"] || @info["finished_build"])["name"]
+  end
+end
+
+class Concourse
+  def initialize(*args)
+    if args.size == 5
+      @server_url, @username, @password, @pipeline_name, @job_name = args
+    elsif args.size == 3
+      @server_url, @pipeline_name, @job_name = args
+    else
+      raise ArgumentError, "malformed arguments"
+    end
+  end
+
+  def latest_status
+    ConcourseBuild.new(@server_url, fetch_latest_build)
+  end
+
+  private
+
+  def fetch_latest_build
+    job_url = "#{@server_url}/api/v1/pipelines/#{@pipeline_name}/jobs/#{@job_name}"
+
+    http_opts = {
+      :http_basic_authentication => [@username, @password],
+      :ssl_verify_mode => OpenSSL::SSL::VERIFY_NONE
+    }
+
+    JSON.parse(open(job_url, http_opts).read)
+  end
+end
+
+puts Concourse.new(*ARGV).latest_status.to_json if __FILE__ == $0
