@@ -1,0 +1,27 @@
+{
+  "name": "fawn",
+  "version": "0.1.0",
+  "description": "Gently galloping through fields of green.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wendorf/fawn.git"
+  },
+  "author": "Dan Wendorf",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wendorf/fawn/issues"
+  },
+  "homepage": "https://github.com/wendorf/fawn#readme",
+  "dependencies": {
+    "express": "^4.13.4"
+  },
+  "devDependencies": {
+    "babel": "^6.5.2",
+    "nodemon": "^1.9.2",
+    "webpack": "^1.13.0"
+  }
+}
