@@ -36,7 +36,12 @@ function getResults(checkscript, cb) {
     }).map(function(check) {
       return new Promise(function(resolve, reject) {
         execFile(scriptsDir + "/" + check.script, check.args, systemRubyEnv, function(error, stdout, stderr) {
-          resolve(JSON.parse(stdout));
+          var data = JSON.parse(stdout);
+          data.info.forEach(function(i) {
+            data[i[0].toLowerCase()] = i[1];
+          });
+          delete data['info'];
+          resolve(data);
         });
       });
     });
