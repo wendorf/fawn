@@ -2,18 +2,20 @@ var express = require('express');
 var app = express();
 var defaultCheckscript = 'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/travis';
 
-function getFile(url, cb) {
+function getFile(url) {
   var https = require('https');
   var fs = require('fs');
 
   var body = "";
-  https.get(url, function(res) {
-    res.on('data', function(chunk) {
-      body = body.concat(chunk);
-    });
+  return new Promise(function(resolve, reject) {
+    https.get(url, function(res) {
+      res.on('data', function(chunk) {
+        body = body.concat(chunk);
+      });
 
-    res.on('end', function() {
-      cb(body);
+      res.on('end', function() {
+        resolve(body);
+      });
     });
   });
 }
@@ -37,12 +39,12 @@ var addToCache = function(check, promise) {
   };
 }
 
-function getResults(checkscript, cb) {
+function getResults(checkscript) {
   var scriptsDir = 'vendor/checkman/scripts';
   var systemRubyEnv = {env: {'RUBY_ROOT': ''}};
   var execFile = require('child_process').execFile;
 
-  getFile(checkscript, function(content) {
+  return getFile(checkscript).then(function(content) {
     var checks = content.trim().split('\n').filter(function(check) {
       return !check.startsWith("#");
     }).map(function(check) {
@@ -75,15 +77,13 @@ function getResults(checkscript, cb) {
 
       return promise;
     });
-    Promise.all(checks).then(function(checks) {
-      cb(checks);
-    })
+    return Promise.all(checks);
   });
 }
 
 app.get('/api/v1/checks', function(req, res){
   checkfile = req.query.checkfile;
-  getResults(checkfile, function(content) {
+  getResults(checkfile).then(function(content) {
     res.send(content);
   });
 });
