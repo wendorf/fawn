@@ -69,6 +69,7 @@ function getResults(checkscript) {
             data[i[0].toLowerCase()] = i[1];
           });
           delete data['info'];
+          data.name = check.name
           resolve(data);
         });
       });
