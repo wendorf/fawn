@@ -39,7 +39,7 @@ var addToCache = function(check, promise) {
   };
 }
 
-function getResults(checkscript) {
+function getCheckfile(checkscript) {
   var scriptsDir = 'vendor/checkman/scripts';
   var systemRubyEnv = {env: {'RUBY_ROOT': ''}};
   var execFile = require('child_process').execFile;
@@ -82,9 +82,20 @@ function getResults(checkscript) {
   });
 }
 
+function getCheckfiles(checkfiles) {
+  return Promise.all(checkfiles.map(getCheckfile)).then(function(checkfiles) {
+    return checkfiles.reduce(function(a, b) {
+      return a.concat(b);
+    });
+  });
+}
+
 app.get('/api/v1/checks', function(req, res){
-  checkfile = req.query.checkfile;
-  getResults(checkfile).then(function(content) {
+  checkfiles = req.query.checkfile;
+  if (!Array.isArray(checkfiles)) {
+    checkfiles = [checkfiles];
+  }
+  getCheckfiles(checkfiles).then(function(content) {
     res.send(content);
   });
 });
