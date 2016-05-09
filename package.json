@@ -17,10 +17,10 @@
   },
   "homepage": "https://github.com/wendorf/fawn#readme",
   "dependencies": {
+    "axios": "^0.11.0",
     "express": "^4.13.4"
   },
   "devDependencies": {
-    "babel": "^6.5.2",
     "nodemon": "^1.9.2",
     "webpack": "^1.13.0"
   }
