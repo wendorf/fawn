@@ -47,7 +47,7 @@
 	var axios = __webpack_require__(1);
 
 	var update = function() {
-	  axios.get('api/v1/checks?checkfile=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/pipeline').then(function(response) {
+	  axios.get('api/v1/checks?checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/pipeline&checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/periodic&checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/travis').then(function(response) {
 	    var checks = document.getElementById("checks");
 	    checks.innerHTML = '';
 	    response.data.sort(function(a,b) {
