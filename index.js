@@ -36,7 +36,7 @@ function getResults(checkscript, cb) {
     }).map(function(check) {
       return new Promise(function(resolve, reject) {
         execFile(scriptsDir + "/" + check.script, check.args, systemRubyEnv, function(error, stdout, stderr) {
-          resolve(stdout);
+          resolve(JSON.parse(stdout));
         });
       });
     });
@@ -49,7 +49,7 @@ function getResults(checkscript, cb) {
 app.get('/api/v1/checks', function(req, res){
   checkfile = req.query.checkfile;
   getResults(checkfile, function(content) {
-    res.send("<pre>" + content + "<pre>");
+    res.send(content);
   });
 });
 
