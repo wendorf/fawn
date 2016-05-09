@@ -18,6 +18,25 @@ function getFile(url, cb) {
   });
 }
 
+var checkCache = {};
+var checkKey = function(check) {
+  return JSON.stringify({
+    script: check.script,
+    args: check.args
+  });
+};
+
+var fetchFromCache = function(check) {
+  return checkCache[checkKey(check)];
+}
+
+var addToCache = function(check, promise) {
+  checkCache[checkKey(check)] = {
+    time: new Date(),
+    promise: promise
+  };
+}
+
 function getResults(checkscript, cb) {
   var scriptsDir = 'vendor/checkman/scripts';
   var systemRubyEnv = {env: {'RUBY_ROOT': ''}};
@@ -34,7 +53,14 @@ function getResults(checkscript, cb) {
         args: pieces[3].split(/\s+/)
       }
     }).map(function(check) {
-      return new Promise(function(resolve, reject) {
+      var cache = fetchFromCache(check);
+      var date = new Date();
+      date.setSeconds(date.getSeconds() - 30);
+      if (cache && cache.time > date) {
+        return cache.promise;
+      }
+
+      var promise = new Promise(function(resolve, reject) {
         execFile(scriptsDir + "/" + check.script, check.args, systemRubyEnv, function(error, stdout, stderr) {
           var data = JSON.parse(stdout);
           data.info.forEach(function(i) {
@@ -44,6 +70,10 @@ function getResults(checkscript, cb) {
           resolve(data);
         });
       });
+
+      addToCache(check, promise);
+
+      return promise;
     });
     Promise.all(checks).then(function(checks) {
       cb(checks);
