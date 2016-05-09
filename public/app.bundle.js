@@ -54,7 +54,7 @@
 	      return a.result - b.result;
 	    }).map(function(check) {
 	      var checkNode = document.createElement("p");
-	      checkNode.className = "check " + (check.result ? 'succeeded' : 'failed');
+	      checkNode.className = "check " + (check.checkBroken ? 'broken' : check.result ? 'succeeded' : 'failed');
 	      checkNode.innerHTML = check.name;
 	      return checkNode;
 	    }).forEach(function(checkNode) {

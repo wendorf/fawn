@@ -64,7 +64,13 @@ function getCheckfile(checkscript) {
 
       var promise = new Promise(function(resolve, reject) {
         execFile(scriptsDir + "/" + check.script, check.args, systemRubyEnv, function(error, stdout, stderr) {
-          var data = JSON.parse(stdout);
+          try {
+            var data = JSON.parse(stdout);
+          } catch(e) {
+            resolve({name: check.name, result: false, checkBroken: true});
+            return;
+          }
+
           data.info.forEach(function(i) {
             data[i[0].toLowerCase()] = i[1];
           });
