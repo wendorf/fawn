@@ -1,7 +1,22 @@
 var axios = require('axios');
+var url = require('url');
 
+var checkRequestParam = function(checks) {
+  return checks.map(function(check) {
+    return 'checkfile[]=' + check;
+  }).join('&');
+}
 var update = function() {
-  axios.get('api/v1/checks?checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/pipeline&checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/periodic&checkfile[]=https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/travis').then(function(response) {
+  var defaultChecks = [
+    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/pipeline',
+    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/periodic',
+    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/travis'
+  ]
+  var checks = url.parse(window.location.href, true).query['checks[]'] || defaultChecks;
+  if (!(checks instanceof Array)) {
+    checks = [checks];
+  }
+  axios.get('api/v1/checks?' + checkRequestParam(checks)).then(function(response) {
     var checks = document.getElementById("checks");
     checks.innerHTML = '';
     response.data.sort(function(a,b) {
