@@ -55,7 +55,6 @@
 	var update = function() {
 	  var defaultChecks = [
 	    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/pipeline',
-	    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/periodic',
 	    'https://raw.githubusercontent.com/cloudfoundry/capi-checkman/master/travis'
 	  ]
 	  var checks = url.parse(window.location.href, true).query['checks[]'] || defaultChecks;
