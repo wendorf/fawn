@@ -41,12 +41,12 @@ var addToCache = function(check, promise) {
 
 function getCheckfile(checkscript) {
   var scriptsDir = 'vendor/checkman/scripts';
-  var systemRubyEnv = {env: {'RUBY_ROOT': ''}};
+  var scriptsExecOptions = {env: {'RUBY_ROOT': ''}, maxBuffer: 1024576};
   var execFile = require('child_process').execFile;
 
   return getFile(checkscript).then(function(content) {
     var checks = content.trim().split('\n').filter(function(check) {
-      return !check.startsWith("#");
+      return !check.startsWith("#") && !check.match(/^\s*$/);
     }).map(function(check) {
       pieces = /^([^:]+):\s*([^\s]+)\s+(.*)$/.exec(check);
       return {
@@ -63,7 +63,7 @@ function getCheckfile(checkscript) {
       }
 
       var promise = new Promise(function(resolve, reject) {
-        execFile(scriptsDir + "/" + check.script, check.args, systemRubyEnv, function(error, stdout, stderr) {
+        execFile(scriptsDir + "/" + check.script, check.args, scriptsExecOptions, function(error, stdout, stderr) {
           try {
             var data = JSON.parse(stdout);
           } catch(e) {
